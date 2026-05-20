@@ -362,15 +362,16 @@ You must return exactly this structure:
 ### 1. description
 - Must be MAX 200 words
 - Must explain:
-  - bugs in the code
-  - bad practices
-  - performance issues
-  - security issues
-  - maintainability issues
-  - clear fixes
+  - 🐞 Bugs and logic errors
+  - ⚠️ Bad practices and anti-patterns
+  - 🚀 Performance issues and optimization opportunities
+  - 🔒 Security vulnerabilities and risks
+  - 🧩 Maintainability and readability problems
+  - ✅ Clear and practical fixes
 - Must be technical and direct
 - No greetings
 - No filler text
+- Focus only on actionable engineering feedback
 
 ---
 
