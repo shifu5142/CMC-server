@@ -181,19 +181,19 @@ app.get("/sign-in", async (req: Request, res: Response) => {
 // =========================
 app.post("/sign-in", async (req: Request, res: Response) => {
   try {
-    const { email, password, githubuser } = req.body;
+    const { email, password, githubUser } = req.body;
 
     let user: any;
     // =========================
     // GITHUB LOGIN / SIGNUP
     // =========================
-    if (githubuser?.email) {
-      user = await User.findOne({ email: githubuser.email });
+    if (githubUser?.email) {
+      user = await User.findOne({ email: githubUser.email });
 
       if (!user) {
         user = await User.create({
-          name: githubuser.username,
-          email: githubuser.email,
+          name: githubUser.displayName,
+          email: githubUser.email,
           password: "",
         });
       }
@@ -202,12 +202,6 @@ app.post("/sign-in", async (req: Request, res: Response) => {
     // =========================
     // NORMAL LOGIN
     // =========================
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing login data",
-      });
-    }
     if (email && password) {
       user = await User.findOne({ email: email });
 
