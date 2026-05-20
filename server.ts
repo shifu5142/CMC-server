@@ -324,54 +324,143 @@ app.post("/review", auth, async (req: Request, res: Response) => {
     const { text } = await generateText({
       model: "openai/gpt-4o-mini",
       prompt: `
-You are a senior software engineer performing a code review.
+You are an expert senior software engineer performing a professional code review.
 
-Your job:
-- Analyze the code carefully
-- Detect bugs, bad practices, performance issues, security risks, and architecture problems
-- Explain how to improve the code
-- Give practical fixes
-- Infer the feature purpose from the file name and code itself
+You MUST follow the instructions exactly. Do NOT add any extra text outside the required JSON.
 
-Rules:
-- Max 200 words
-- Be direct and technical
-- Do not rewrite the full file
-- Focus only on important issues
-- Mention exact problems
-- Suggest clean solutions
+---
 
-Project context:
-- File name: ${filename}
-- Language: ${language}
+## OUTPUT REQUIREMENT (VERY IMPORTANT)
 
-Response format:
+Return ONLY valid JSON.
 
-Title: <generate a short title based on the code purpose>
+No markdown.
+No explanations outside JSON.
+No backticks.
+No comments.
+No extra keys.
 
-Issues:
-1. <problem>
-   Fix: <solution>
+---
 
-2. <problem>
-   Fix: <solution>
+## JSON FORMAT (STRICT)
 
-3. <problem>
-   Fix: <solution>
+You must return exactly this structure:
 
-Quick Tips:
-- <tip>
-- <tip>
+{
+  "description": string,
+  "fixedCode": string,
+  "security": number,
+  "performance": number,
+  "maintainability": number,
+  "score": number
+}
 
-Code to review:
+---
+
+## FIELD RULES
+
+### 1. description
+- Must be MAX 200 words
+- Must explain:
+  - bugs in the code
+  - bad practices
+  - performance issues
+  - security issues
+  - maintainability issues
+  - clear fixes
+- Must be technical and direct
+- No greetings
+- No filler text
+
+---
+
+### 2. fixedCode
+- Must contain ONLY corrected code
+- No explanations inside the code
+- No markdown formatting
+- If multiple fixes exist, return full corrected version of the file
+- If no changes are needed, return the original code unchanged
+
+---
+
+### 3. security
+- Integer from 1 to 100
+- Grade security quality of the code
+- 1 = critical vulnerabilities
+- 100 = enterprise-grade security
+
+---
+
+### 4. performance
+- Integer from 1 to 100
+- Grade runtime and optimization quality
+- 1 = extremely inefficient
+- 100 = highly optimized
+
+---
+
+### 5. maintainability
+- Integer from 1 to 100
+- Grade readability, architecture, scalability, and code quality
+- 1 = impossible to maintain
+- 100 = extremely maintainable
+
+---
+
+### 6. score
+- Integer from 1 to 100
+- Overall code quality score
+- Must reflect combined quality of:
+  - security
+  - performance
+  - maintainability
+  - bug severity
+  - architecture quality
+  - best practices
+
+---
+
+## IMPORTANT RULES (CRITICAL)
+
+- You MUST output valid JSON only
+- You MUST NOT include any text before or after JSON
+- You MUST NOT wrap output in markdown
+- You MUST ensure JSON is parseable by JSON.parse()
+- Escape all special characters properly
+
+---
+
+## CONTEXT
+
+File name: ${filename}
+Language: ${language}
+
+---
+
+## CODE TO REVIEW
+
 ${code}
 `,
     });
 
+    const parsed = JSON.parse(text) as {
+      description: string;
+      fixedCode: string;
+      security: number;
+      performance: number;
+      maintainability: number;
+      score: number;
+    };
+
     return res.status(200).json({
       success: true,
       result: {
-        text,
+        description: parsed.description,
+        code: parsed.fixedCode,
+        security: parsed.security,
+        performance: parsed.performance,
+        maintainability: parsed.maintainability,
+        score: parsed.score,
         filename,
         language,
         reviewedAt: new Date().toISOString(),
