@@ -40,7 +40,7 @@ const userSchema = new db.Schema(
     name: {
       type: String,
       required: true,
-      unique: true,
+      unique: false,
       trim: true,
     },
 
@@ -54,7 +54,7 @@ const userSchema = new db.Schema(
 
     password: {
       type: String,
-      required: true,
+      required: false,
     },
 
     company: {
@@ -272,37 +272,71 @@ app.get("/dashboard", async (req: Request, res: Response) => {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: "No token",
+        step: "auth-header",
+        message: "No token or invalid Authorization header",
       });
     }
 
     const token = authHeader.split(" ")[1];
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
-      id: string;
-    };
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        step: "token-extract",
+        message: "Token missing after split",
+      });
+    }
+
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+    } catch (jwtError: any) {
+      return res.status(401).json({
+        success: false,
+        step: "jwt-verify",
+        message: "JWT verification failed",
+        error: jwtError.message,
+      });
+    }
+
+    if (!decoded?.id) {
+      return res.status(401).json({
+        success: false,
+        step: "jwt-payload",
+        message: "Token payload invalid (missing user id)",
+        decoded,
+      });
+    }
 
     const user = await User.findById(decoded.id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        step: "user-lookup",
+        message: "User not found in database",
+        userId: decoded.id,
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
+      step: "success",
       data: {
         id: user._id,
         name: user.name,
         email: user.email,
       },
     });
-  } catch (error) {
-    res.status(401).json({
+  } catch (error: any) {
+    console.error("DASHBOARD ERROR:", error);
+
+    return res.status(500).json({
       success: false,
-      message: "Invalid token",
+      step: "unknown",
+      message: "Unexpected server error",
+      error: error?.message,
     });
   }
 });
