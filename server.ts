@@ -56,6 +56,18 @@ const userSchema = new db.Schema(
       type: String,
       required: true,
     },
+
+    company: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
   },
   {
     timestamps: true,
@@ -476,7 +488,102 @@ ${code}
     });
   }
 });
+/////////////////////////////////////////////////
+//setting
+/////////////////////////////////////////////////
+app.get("/settings", auth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
 
+    const user = await User.findById(userId).select("name email company role");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        name: user.name,
+        email: user.email,
+        company: user.company || "",
+        role: user.role || "user",
+      },
+    });
+  } catch (error: any) {
+    console.error("SETTINGS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error?.message,
+    });
+  }
+});
+app.put("/settings", auth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const { name, email, company, role } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and email are required",
+      });
+    }
+
+    const existingEmail = await User.findOne({
+      email,
+      _id: { $ne: userId },
+    });
+
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already in use",
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        company: company?.trim() || "",
+        role: role === "admin" ? "admin" : "user",
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).select("name email company role");
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error: any) {
+    console.error("UPDATE SETTINGS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error?.message,
+    });
+  }
+});
 //////////////////////////////////////////////////
 // server
 app.listen(PORT, () => {
