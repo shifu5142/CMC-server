@@ -265,58 +265,26 @@ app.post("/sign-in", async (req: Request, res: Response) => {
 ///////////////////////////////////////////////////
 //dashboard
 //////////////////////////////////////////////////
-app.get("/dashboard", async (req: Request, res: Response) => {
+app.get("/dashboard", auth, async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
+    const userId = (req as any).user?.id;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
-        step: "auth-header",
-        message: "No token or invalid Authorization header",
+        step: "auth",
+        message: "Missing user id in token",
       });
     }
 
-    const token = authHeader.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        step: "token-extract",
-        message: "Token missing after split",
-      });
-    }
-
-    let decoded: any;
-
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    } catch (jwtError: any) {
-      return res.status(401).json({
-        success: false,
-        step: "jwt-verify",
-        message: "JWT verification failed",
-        error: jwtError.message,
-      });
-    }
-
-    if (!decoded?.id) {
-      return res.status(401).json({
-        success: false,
-        step: "jwt-payload",
-        message: "Token payload invalid (missing user id)",
-        decoded,
-      });
-    }
-
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
         success: false,
         step: "user-lookup",
         message: "User not found in database",
-        userId: decoded.id,
+        userId,
       });
     }
 
@@ -343,6 +311,17 @@ app.get("/dashboard", async (req: Request, res: Response) => {
 /////////////////////////////////////////////////
 //reveiw page
 ////////////////////////////////////////////////
+app.get("/review", auth, (req: Request, res: Response) => {
+  try {
+    return res.status(200).json({
+      success: true,
+    });
+  } catch {
+    return res.status(200).json({
+      success: false,
+    });
+  }
+});
 app.post("/review", auth, async (req: Request, res: Response) => {
   try {
     const { code, language, filename } = req.body;
@@ -609,6 +588,20 @@ app.put("/settings", auth, async (req: Request, res: Response) => {
       success: false,
       message: "Internal server error",
       error: error?.message,
+    });
+  }
+});
+/////////////////////////////////////////////////
+//billing
+///////////////////////////////////////////////////
+app.get("/billing", auth, (req: Request, res: Response) => {
+  try {
+    return res.status(200).json({
+      success: true,
+    });
+  } catch {
+    return res.status(200).json({
+      success: false,
     });
   }
 });
