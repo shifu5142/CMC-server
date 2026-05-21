@@ -68,6 +68,11 @@ const userSchema = new db.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    currentPlan: {
+      type: String,
+      enum: ["active", "not active"],
+      default: "not active",
+    },
   },
   {
     timestamps: true,
@@ -170,7 +175,7 @@ app.post("/sign-up", async (req: Request, res: Response) => {
     });
   }
 });
-app.get("/sign-in", async (req: Request, res: Response) => {
+app.get("/sign-in", auth, async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
   });
