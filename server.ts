@@ -148,34 +148,75 @@ function auth(req: Request, res: Response, next: NextFunction) {
 }
 app.post("/sign-up", async (req: Request, res: Response) => {
   try {
-    const { name, password, email } = req.body;
+    const { name, password, email, githubUser } = req.body;
 
     // check if user exists
-    const existingUser = await User.findOne({
-      $or: [{ name: name }, { email: email }],
-    });
+    if (name && password && email) {
+      const existingUser = await User.findOne({
+        $or: [{ name: name }, { email: email }],
+      });
 
-    if (existingUser) {
-      return res.status(409).json({
-        message: "The user already exists",
+      if (existingUser) {
+        return res.status(409).json({
+          message: "The user already exists",
+          success: false,
+        });
+      }
+
+      // hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // create user
+      const user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+      });
+
+      res.status(201).json({
+        message: "User created successfully",
+        success: true,
+        data: user,
+      });
+    }
+    let user: any;
+    if (githubUser?.email) {
+      user = await User.findOne({ email: githubUser.email });
+
+      if (!user) {
+        user = await User.create({
+          name: githubUser.displayName,
+          email: githubUser.email,
+          password: "",
+        });
+      }
+    }
+    if (!user) {
+      return res.status(400).json({
+        user: user,
         success: false,
+        message: "Missing login data",
       });
     }
 
-    // hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // =========================
+    // JWT TOKEN
+    // =========================
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "2h" },
+    );
 
-    // create user
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-    });
-
-    res.status(201).json({
-      message: "User created successfully",
+    return res.status(200).json({
       success: true,
-      data: user,
+      message: "Login successful",
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        token,
+      },
     });
   } catch (error: any) {
     console.error("REGISTER ERROR:", error);
